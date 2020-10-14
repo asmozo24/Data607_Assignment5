@@ -1,0 +1,214 @@
+---
+title: "DATA607-Tidying and Transforming Data"
+author: "Alexis Mekueko"
+date: "9/23/2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+
+
+Github Link: https://github.com/asmozo24/Data607_Assignment5.git
+
+Web link: https://rpubs.com/amekueko/669010
+
+
+
+## R Packages
+```{r load-packages, message=FALSE}
+
+
+library(tidyverse) #loading all library needed for this assignment
+library(openintro)
+#head(fastfood)
+library(readxl)
+library(readr)
+library(plyr)
+library(dplyr)
+#library(dice)
+# #library(VennDiagram)
+# #library(help = "dice")
+library(DBI)
+library(dbplyr)
+library(data.table)
+library(rstudioapi)
+#rstudioapi::isAvailable()
+library(RJDBC)
+library(odbc)
+library(RSQLite)
+library(rvest)
+library(stringr)
+library(readtext)
+library(ggpubr)
+#library(fitdistrplus)
+library(ggplot2)
+library(moments)
+library(qualityTools)
+library(normalp)
+library(utils)
+library(MASS)
+library(qqplotr)
+#library(DATA606)
+library(RCurl)
+
+```
+
+#connecting to my github respository to import data
+
+
+```{r}
+
+# pulling raw data from my github respository, Data607_Assignment5
+# https://github.com/asmozo24/Data607_Assignment5.git
+
+airlines_arrival1 <- read.table(url("https://raw.githubusercontent.com/asmozo24/Data607_Assignment5/master/Arrival_Delays_02_airlines%20.csv"), sep = ",")
+
+airlines_arrival1  ## header not clean
+View(airlines_arrival1)
+
+# This access from github to Rstudio also work 
+ airlines_arrival2 <- read.csv("https://raw.githubusercontent.com/asmozo24/Data607_Assignment5/master/Arrival_Delays_02_airlines%20.csv",header=TRUE,stringsAsFactors=FALSE)
+ airlines_arrival2 # this is to check it is the actual dataframe I am looking for ....this works too.
+
+
+```
+
+# connection to working directory and import data from local drive
+
+```{r }
+
+setwd("~/R/DATA607_Assg5") #set the working directory to access dataframe
+  # display dataframe from local drive
+# newDataName <- read.csv("https://raw.githubusercontent.com/asmozo24/Data607_Assignment5/master/Arrival_Delays_02_airlines%20.csv", sep = ",", na.strings = "NA", strip.white = TRUE, stringsAsFactors = FALSE)
+
+Arrival_Delays_02_airlines_ <- read.csv("C:/Users/Petit Mandela/Documents/R/DATA607_Assg5/Arrival_Delays_02_airlines .csv")
+
+Arrival_Delays_02_airlines_
+
+```
+
+
+
+
+
+### Connecting to SQL server
+--this connection works but requires password, I am going to comment this block because preventing the knit process.
+ --Now we succeeded in reading Arrival_Delays_02_airlines full table into R dataframe.....
+
+ ```{r connection to sql} #sql connection = con
+ 
+  con <- dbConnect(odbc(),
+                   Driver = "SQL Server",
+                   Server = "ATM\\ATMSERVER", 
+                   Database = "Data607_Airline_Delays_Db",
+                   UID = "Alex", 
+                   PWD = rstudioapi::askForPassword("Database password"),
+                   Port = 1433)
+ 
+  dbListFields(con, "Arrival_Delays_02_airlines")
+  airlines_arrival <- dbReadTable(con, "Arrival_Delays_02_airlines") 
+  airlines_arrival 
+
+
+ ```
+
+
+## Handling missings data
+I will use Github link
+
+```{r }
+
+is.na(airlines_arrival2) # checking if there is a missing data in the dataset, return is yes
+sum(is.na(airlines_arrival2)) # file to big, checking the sum of all missing data (return is 09 missing data)
+airlines_arrival4 <- na.omit(airlines_arrival2) # delete/remove the missings data because it is an imcomplete observation
+airlines_arrival4
+View(airlines_arrival4)
+
+```
+
+
+## Tidying data
+I will use Github link
+What city has the most arrivals all airlines combined? Answer. Phoenix appears to be have most arrivals or the most destination all airlines combined.
+Thus, Phoenix is the most visited city and probably collecting more dividends than other cities.
+
+What city has the least arrivals all airlines combined.? Answer: San Diego appears to have the least arrivals or the least destination all airlines combined.
+San Diego is the least visited, the mayor needs to work on making the city more attractive. Maybe trying to find out why most people go to Phoenix.
+
+```{r }
+row.names(airlines_arrival4) <- NULL
+airlines_arrival4
+
+#renaming the no name columns
+names(airlines_arrival4)[1] <- 'airlines'
+names(airlines_arrival4)[2] <- 'arrival_status'
+
+# Another way of renaming
+# airlines_arrival4 <- airlines_arrival4 %>% 
+#   rename(airlines = X,  arrival_status = X.1)
+
+airlines_arrival4
+
+view(airlines_arrival4)
+
+#filling  airlines companies
+airlines_arrival4$airlines[2] <- c("ALASKA")
+airlines_arrival4$airlines[4] <- c("AMWEST")
+airlines_arrival4
+
+summary(airlines_arrival4)
+
+# What city has the most arrivals all airlines combined? Answer. Phoenix appears to be have most arrivals or the most destination all airlines combined.
+# Thus, Phoenix is the most visited city and probably collecting more dividends than other cities.
+
+# What city has the least arrivals all airlines combined.? Answer: San Diego appears to have the least arrivals or the least destination all airlines combined.
+# San Diego is the least visited, the mayor needs to work on making the city more attractive. Maybe trying to find out why most people go to Phoenix.
+
+total_Los_Angeles <- sum(airlines_arrival4$Los.Angeles)     # 1370
+total_Phoenix <- sum(airlines_arrival4$Phoenix)             # 5488
+total_San.Diego <- sum(airlines_arrival4$San.Diego)         # 680
+total_San.Francisco <- sum(airlines_arrival4$San.Francisco) # 1054
+total_Seattle <- sum(airlines_arrival4$Seattle)             # 2408
+
+total_arrivals <- c(total_Los_Angeles, total_Phoenix, total_San.Diego, total_San.Francisco, total_Seattle)
+cities <- c('Los Angeles', 'Phoenix', 'San Diego', 'San Francisco', 'Seattle')
+
+# Barplot to visualize the number 
+Cities_Arrivals <- data.frame(cities, total_arrivals)
+View(Cities_Arrivals)
+barplot(Cities_Arrivals$total_arrivals, names.arg = Cities_Arrivals$cities, main= "Total Arrivals per City", xlab = "Cities", ylab = "Total Arrivals",  col = rainbow(6))
+
+# another way to do a barplot 
+ ggplot(data = Cities_Arrivals, aes(x= cities, y=total_arrivals)) +
+    geom_bar(stat="identity", fill = rainbow(5), width = 0.5)
+
+ 
+```
+
+
+## Let's look at the data a little bit different
+
+```{r }
+
+#let call gather data in columns
+
+airlines_arrival5 <- airlines_arrival4 %>%
+  gather(key = city, value = "total_arrivals", 3:7)
+
+
+airlines_arrival6 <- airlines_arrival5 %>%
+  pivot_wider(names_from = "arrival_status", values_from = "total_arrivals")
+
+
+# looking at the view (airlines_arrival5), by filtering descending order, I can say Alaska has the least number of delay arrivals which is Phoenix, AMWEST has  the most number of arrivals in time in Phoenix.
+
+
+
+```
